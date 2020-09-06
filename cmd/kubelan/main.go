@@ -23,6 +23,7 @@ func init() {
 	viper.SetDefault("namespace", "")
 	viper.SetDefault("services", []string{})
 	viper.SetDefault("vxlan.interface", "kubelan")
+	viper.SetDefault("vxlan.mtu", -1)
 	viper.SetDefault("vxlan.vni", 6969)
 	viper.SetDefault("vxlan.port", 4789)
 	viper.SetDefault("hooks.up", []string{})

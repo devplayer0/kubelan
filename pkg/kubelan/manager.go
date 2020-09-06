@@ -162,7 +162,7 @@ func (m *Manager) Start() error {
 	log.Info("Starting kubelan manager")
 
 	var err error
-	m.vxlan, err = NewVXLAN(m.config.VXLAN.Interface, m.config.VXLAN.VNI, m.config.IP, m.config.VXLAN.Port)
+	m.vxlan, err = NewVXLAN(m.config.VXLAN.Interface, m.config.VXLAN.MTU, m.config.VXLAN.VNI, m.config.IP, m.config.VXLAN.Port)
 	if err != nil {
 		return fmt.Errorf("failed to create VXLAN interface: %w", err)
 	}

@@ -109,6 +109,7 @@ type Config struct {
 
 	VXLAN struct {
 		Interface string
+		MTU       int
 		VNI       uint32
 		Port      uint16
 	}

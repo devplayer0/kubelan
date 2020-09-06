@@ -13,6 +13,30 @@ import (
 // ZeroMAC represents an all-zero MAC address
 var ZeroMAC = net.HardwareAddr([]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
 
+func guessMTU(ip net.IP) (int, error) {
+	links, err := netlink.LinkList()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get link list: %w", err)
+	}
+
+	for _, link := range links {
+		addrs, err := netlink.AddrList(link, syscall.AF_INET)
+		if err != nil {
+			return 0, fmt.Errorf("failed to get addresses for interface %v: %w", link.Attrs().Name, err)
+		}
+
+		for _, addr := range addrs {
+			if addr.IP.Equal(ip) {
+				// 50 bytes is a generous amount for the IPv4 + UDP + VXLAN header overhead
+				return link.Attrs().MTU - 50, nil
+			}
+		}
+	}
+
+	log.Warnf("Failed to guess MTU from IP %v", ip)
+	return 0, nil
+}
+
 // VXLAN creates and manages a VXLAN network interface
 type VXLAN struct {
 	name string
@@ -21,8 +45,23 @@ type VXLAN struct {
 }
 
 // NewVXLAN creates a new VXLAN interface
-func NewVXLAN(name string, vni uint32, src net.IP, port uint16) (*VXLAN, error) {
+func NewVXLAN(name string, mtu int, vni uint32, src net.IP, port uint16) (*VXLAN, error) {
 	log.WithField("name", name).Debug("Creating VXLAN interface")
+
+	var err error
+	if mtu == -1 {
+		mtu, err = guessMTU(src)
+		if err != nil {
+			return nil, fmt.Errorf("error while trying to guess MTU: %w", err)
+		}
+
+		if mtu != 0 {
+			log.WithFields(log.Fields{
+				"ip":  src,
+				"mtu": mtu,
+			}).Debug("Guessed MTU from source IP")
+		}
+	}
 
 	existing, err := netlink.LinkByName(name)
 	if err == nil {
@@ -36,6 +75,7 @@ func NewVXLAN(name string, vni uint32, src net.IP, port uint16) (*VXLAN, error) 
 
 	la := netlink.NewLinkAttrs()
 	la.Name = name
+	la.MTU = mtu
 	vxlan := &netlink.Vxlan{
 		LinkAttrs: la,
 		VxlanId:   int(vni),
