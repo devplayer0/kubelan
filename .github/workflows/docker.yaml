@@ -17,8 +17,9 @@ jobs:
 
       - name: Log into GHCR
         run: |
+          echo "Logging in as $GITHUB_ACTOR"
           echo "${{ secrets.CR_PAT }}" | \
-            docker login -u $GITHUB_ACTOR --password-stdin
+            docker login -u "$GITHUB_ACTOR" --password-stdin
 
       - name: Pull current image
         run: docker pull "$REPO:latest"
