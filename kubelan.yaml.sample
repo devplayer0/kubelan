@@ -1,0 +1,6 @@
+log_level: DEBUG
+ip: 1.2.3.4
+services:
+  - default/some-svc
+interface: my-lan
+vid: 1337

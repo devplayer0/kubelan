@@ -18,8 +18,8 @@ type Manager struct {
 }
 
 // NewManager creates a new manager
-func NewManager(config *rest.Config) (*Manager, error) {
-	k8s, err := kubernetes.NewForConfig(config)
+func NewManager(k8sConf *rest.Config, config Config) (*Manager, error) {
+	k8s, err := kubernetes.NewForConfig(k8sConf)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kubernetes client")
 	}
@@ -32,6 +32,8 @@ func NewManager(config *rest.Config) (*Manager, error) {
 
 // Start starts watching services
 func (m *Manager) Start() {
+	log.Info("Starting kubelan manager")
+
 	factory := informers.NewSharedInformerFactory(m.k8s, 30*time.Second)
 	factory.Core().V1().Services().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(svc interface{}) {
@@ -50,5 +52,6 @@ func (m *Manager) Start() {
 
 // Stop stops watching services
 func (m *Manager) Stop() {
+	log.Info("Stopping kubelan manager")
 	close(m.stop)
 }

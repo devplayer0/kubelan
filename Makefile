@@ -3,13 +3,16 @@ DOCKER_TAG = latest
 
 .PHONY: all clean
 
-default: docker
+default: binary
 
 docker:
 	docker build -t $(DOCKER_REPO):$(DOCKER_TAG) .
 
 push: docker
 	docker push $(DOCKER_REPO):$(DOCKER_TAG)
+
+binary:
+	go build -o bin/ ./cmd/...
 
 tools:
 	@cat tools.go | grep _ | awk -F'"' '{print $$2}' | xargs -tI % go install %
