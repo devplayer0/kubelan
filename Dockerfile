@@ -14,4 +14,6 @@ FROM alpine:3.12
 
 COPY --from=builder /usr/local/kubelan/bin/* /usr/local/bin/
 
+ENV K8S_IP=
+ENV K8S_SERVICES=
 ENTRYPOINT ["/usr/local/bin/kubelan"]
