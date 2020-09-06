@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"os/signal"
+	"strings"
 
 	"github.com/devplayer0/kubelan/pkg/kubelan"
 	"github.com/fsnotify/fsnotify"
@@ -20,8 +21,9 @@ func init() {
 	viper.SetDefault("log_level", log.InfoLevel)
 	viper.SetDefault("ip", "")
 	viper.SetDefault("services", []string{})
-	viper.SetDefault("interface", "kubelan")
-	viper.SetDefault("vid", 6969)
+	viper.SetDefault("vxlan.interface", "kubelan")
+	viper.SetDefault("vxlan.vni", 6969)
+	viper.SetDefault("vxlan.port", 4789)
 
 	// Config file loading
 	viper.SetConfigType("yaml")
@@ -31,6 +33,7 @@ func init() {
 
 	// Config from environment
 	viper.SetEnvPrefix("kl")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
 	// Config from flags
@@ -45,9 +48,15 @@ func init() {
 	}
 }
 
+func stop() {
+	if err := manager.Stop(); err != nil {
+		log.WithError(err).Fatal("Failed to stop kubelan manager")
+	}
+}
+
 func reloadConfig() {
 	if manager != nil {
-		manager.Stop()
+		stop()
 		manager = nil
 	}
 
@@ -69,7 +78,9 @@ func reloadConfig() {
 		log.WithError(err).Fatal("Failed to create kubelan manager")
 	}
 
-	manager.Start()
+	if err := manager.Start(); err != nil {
+		log.WithError(err).Fatal("Failed to start kubelan manager")
+	}
 }
 
 func main() {
@@ -84,5 +95,5 @@ func main() {
 	reloadConfig()
 
 	<-sigs
-	manager.Stop()
+	stop()
 }

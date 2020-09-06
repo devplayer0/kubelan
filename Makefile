@@ -18,7 +18,7 @@ tools:
 	@cat tools.go | grep _ | awk -F'"' '{print $$2}' | xargs -tI % go install %
 
 dev: tools
-	CompileDaemon -exclude-dir=.git -build="go build -o bin/kubelan ./cmd/kubelan" \
+	sudo -E CompileDaemon -exclude-dir=.git -build="go build -o bin/kubelan ./cmd/kubelan" \
 		-command="bin/kubelan" -graceful-kill
 
 clean:

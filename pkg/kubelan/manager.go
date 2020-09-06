@@ -24,6 +24,7 @@ type Manager struct {
 
 	services map[string]struct{}
 	stop     chan struct{}
+	vxlan    *VXLAN
 }
 
 func (m *Manager) changed(deleted bool, eps *v1beta1.EndpointSlice) {
@@ -73,6 +74,23 @@ func (m *Manager) changed(deleted bool, eps *v1beta1.EndpointSlice) {
 		"Service": svc,
 		"ips":     ips,
 	}).Debug("Service IP addresses")
+	for _, ip := range ips {
+		if deleted {
+			if err := m.vxlan.RemovePeer(ip); err != nil {
+				log.WithFields(log.Fields{
+					"Service": svc,
+					"ip":      ip,
+				}).WithError(err).Warn("Failed to remove peer")
+			}
+		} else {
+			if err := m.vxlan.AddPeer(ip); err != nil {
+				log.WithFields(log.Fields{
+					"Service": svc,
+					"ip":      ip,
+				}).WithError(err).Warn("Failed to add peer")
+			}
+		}
+	}
 }
 
 // NewManager creates a new manager
@@ -93,12 +111,19 @@ func NewManager(k8sConf *rest.Config, config Config) (*Manager, error) {
 
 		services,
 		make(chan struct{}),
+		nil,
 	}, nil
 }
 
 // Start starts watching services
-func (m *Manager) Start() {
+func (m *Manager) Start() error {
 	log.Info("Starting kubelan manager")
+
+	var err error
+	m.vxlan, err = NewVXLAN(m.config.VXLAN.Interface, m.config.VXLAN.VNI, m.config.IP, m.config.VXLAN.Port)
+	if err != nil {
+		return fmt.Errorf("failed to create VXLAN interface: %w", err)
+	}
 
 	factory := informers.NewSharedInformerFactory(m.k8s, 0)
 	factory.Discovery().V1beta1().EndpointSlices().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -118,10 +143,18 @@ func (m *Manager) Start() {
 	})
 
 	factory.Start(m.stop)
+	return nil
 }
 
 // Stop stops watching services
-func (m *Manager) Stop() {
+func (m *Manager) Stop() error {
 	log.Info("Stopping kubelan manager")
+
 	close(m.stop)
+
+	if err := m.vxlan.Delete(); err != nil {
+		return fmt.Errorf("failed to delete VXLAN interface: %w", err)
+	}
+
+	return nil
 }

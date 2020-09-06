@@ -17,6 +17,7 @@ COPY --from=builder /usr/local/kubelan/bin/* /usr/local/bin/
 ENV KL_LOG_LEVEL=
 ENV KL_IP=
 ENV KL_SERVICES=
-ENV KL_INTERFACE=
-ENV KL_VID=
+ENV KL_VXLAN_INTERFACE=
+ENV KL_VXLAN_VNI=
+ENV KL_VXLAN_PORT=
 ENTRYPOINT ["/usr/local/bin/kubelan"]

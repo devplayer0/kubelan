@@ -102,8 +102,12 @@ func ConfigDecoderOptions(config *mapstructure.DecoderConfig) {
 type Config struct {
 	LogLevel log.Level `mapstructure:"log_level"`
 
-	IP        net.IP
-	Services  []v1.ObjectMeta
-	Interface string
-	VID       uint32
+	IP       net.IP
+	Services []v1.ObjectMeta
+
+	VXLAN struct {
+		Interface string
+		VNI       uint32
+		Port      uint16
+	}
 }
