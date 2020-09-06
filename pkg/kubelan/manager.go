@@ -49,7 +49,7 @@ func (m *Manager) changed(deleted bool, eps *v1beta1.EndpointSlice) {
 	log.WithFields(log.Fields{
 		"Service": svc,
 		"deleted": deleted,
-	}).Debug("Service endpoints changed!")
+	}).Info("Service endpoints changed!")
 
 	ips := []net.IP{}
 	for _, ep := range eps.Endpoints {
@@ -102,6 +102,15 @@ func NewManager(k8sConf *rest.Config, config Config) (*Manager, error) {
 
 	services := make(map[string]struct{})
 	for _, service := range config.Services {
+		if service.Namespace == "" {
+			if config.Namespace == "" {
+				log.WithField("Service", service.Name).Warn("Default namespace unset, skipping service without namespace")
+				continue
+			}
+
+			service.Namespace = config.Namespace
+		}
+
 		services[metaShortName(&service)] = struct{}{}
 	}
 

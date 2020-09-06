@@ -34,7 +34,7 @@ data:
   kubelan.yaml: |
     log_level: DEBUG
     services:
-      - default/kubelan
+      - kubelan
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -63,11 +63,16 @@ spec:
               protocol: TCP
         - name: kubelan
           image: ghcr.io/devplayer0/kubelan:latest
+          imagePullPolicy: Always
           env:
             - name: KL_IP
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+            - name: KL_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
           securityContext:
             capabilities:
               add: [NET_ADMIN]

@@ -75,9 +75,10 @@ func stringToObjectMetaHookFunc() mapstructure.DecodeHookFunc {
 			return data, nil
 		}
 
-		match := objectMetaRegex.FindStringSubmatch(data.(string))
+		value := data.(string)
+		match := objectMetaRegex.FindStringSubmatch(value)
 		if len(match) == 0 {
-			return nil, errors.New(`Invalid service "namespace/name"`)
+			return v1.ObjectMeta{Name: value}, nil
 		}
 
 		return v1.ObjectMeta{
@@ -102,8 +103,9 @@ func ConfigDecoderOptions(config *mapstructure.DecoderConfig) {
 type Config struct {
 	LogLevel log.Level `mapstructure:"log_level"`
 
-	IP       net.IP
-	Services []v1.ObjectMeta
+	IP        net.IP
+	Namespace string
+	Services  []v1.ObjectMeta
 
 	VXLAN struct {
 		Interface string

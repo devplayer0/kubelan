@@ -1,7 +1,9 @@
 log_level: DEBUG
 ip: 1.2.3.4
+namespace: default
 services:
-  - default/some-svc
+  - kube-system/some-svc
+  - some-default-ns-svc
 vxlan:
   interface: my-lan
   vni: 1337

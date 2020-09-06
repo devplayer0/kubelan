@@ -20,6 +20,7 @@ func init() {
 	// Config defaults
 	viper.SetDefault("log_level", log.InfoLevel)
 	viper.SetDefault("ip", "")
+	viper.SetDefault("namespace", "")
 	viper.SetDefault("services", []string{})
 	viper.SetDefault("vxlan.interface", "kubelan")
 	viper.SetDefault("vxlan.vni", 6969)
