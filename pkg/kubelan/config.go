@@ -112,4 +112,9 @@ type Config struct {
 		VNI       uint32
 		Port      uint16
 	}
+
+	Hooks struct {
+		Up     []string
+		Change []string
+	}
 }

@@ -12,6 +12,8 @@ RUN mkdir bin/ && go build -o bin/ ./cmd/...
 
 FROM alpine:3.12
 
+RUN apk --no-cache add iproute2
+
 COPY --from=builder /usr/local/kubelan/bin/* /usr/local/bin/
 
 ENV KL_LOG_LEVEL=

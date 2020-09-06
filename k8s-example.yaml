@@ -35,6 +35,8 @@ data:
     log_level: DEBUG
     services:
       - kubelan
+    up: ['sh', '-c', 'echo "Hello from up hook!" && ip link show dev $IFACE && exit 1']
+    change: ['sh', '-c', 'echo "Hello from change hook!" && echo "iface: $IFACE, service: $SERVICE, ips: $IPS", deleted: $DELETED']
 ---
 apiVersion: apps/v1
 kind: Deployment

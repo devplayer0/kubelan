@@ -25,6 +25,8 @@ func init() {
 	viper.SetDefault("vxlan.interface", "kubelan")
 	viper.SetDefault("vxlan.vni", 6969)
 	viper.SetDefault("vxlan.port", 4789)
+	viper.SetDefault("hooks.up", []string{})
+	viper.SetDefault("hooks.change", []string{})
 
 	// Config file loading
 	viper.SetConfigType("yaml")

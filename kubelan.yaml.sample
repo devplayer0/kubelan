@@ -8,3 +8,6 @@ vxlan:
   interface: my-lan
   vni: 1337
   port: 4789
+hooks:
+  up: ['sh', '-c', 'echo "Hello from up hook!" && ip link show dev $IFACE']
+  change: ['sh', '-c', 'echo "Hello from change hook!" && echo "iface: $IFACE, service: $SERVICE, ips: $IPS", deleted: $DELETED']

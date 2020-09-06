@@ -1,8 +1,12 @@
 package kubelan
 
 import (
+	"context"
 	"fmt"
 	"net"
+	"os"
+	"os/exec"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 	"k8s.io/api/discovery/v1beta1"
@@ -25,6 +29,9 @@ type Manager struct {
 	services map[string]struct{}
 	stop     chan struct{}
 	vxlan    *VXLAN
+
+	hookCtx    context.Context
+	hookCancel context.CancelFunc
 }
 
 func (m *Manager) changed(deleted bool, eps *v1beta1.EndpointSlice) {
@@ -91,6 +98,29 @@ func (m *Manager) changed(deleted bool, eps *v1beta1.EndpointSlice) {
 			}
 		}
 	}
+
+	if len(m.config.Hooks.Change) > 0 {
+		sIPs := make([]string, len(ips))
+		for i, ip := range ips {
+			sIPs[i] = ip.String()
+		}
+
+		cmd := exec.CommandContext(m.hookCtx, m.config.Hooks.Change[0], m.config.Hooks.Change[1:]...)
+		cmd.Env = append(os.Environ(),
+			"IFACE="+m.config.VXLAN.Interface,
+			"SERVICE="+svc,
+			"IPS="+strings.Join(sIPs, " "),
+			fmt.Sprintf("DELETED=%v", deleted),
+		)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		go func() {
+			if err := cmd.Run(); err != nil {
+				log.WithError(err).Warn("Change hook failed")
+			}
+		}()
+	}
 }
 
 // NewManager creates a new manager
@@ -114,6 +144,7 @@ func NewManager(k8sConf *rest.Config, config Config) (*Manager, error) {
 		services[metaShortName(&service)] = struct{}{}
 	}
 
+	hookCtx, hookCancel := context.WithCancel(context.Background())
 	return &Manager{
 		k8s,
 		config,
@@ -121,6 +152,8 @@ func NewManager(k8sConf *rest.Config, config Config) (*Manager, error) {
 		services,
 		make(chan struct{}),
 		nil,
+		hookCtx,
+		hookCancel,
 	}, nil
 }
 
@@ -132,6 +165,21 @@ func (m *Manager) Start() error {
 	m.vxlan, err = NewVXLAN(m.config.VXLAN.Interface, m.config.VXLAN.VNI, m.config.IP, m.config.VXLAN.Port)
 	if err != nil {
 		return fmt.Errorf("failed to create VXLAN interface: %w", err)
+	}
+
+	if len(m.config.Hooks.Up) > 0 {
+		cmd := exec.CommandContext(m.hookCtx, m.config.Hooks.Up[0], m.config.Hooks.Up[1:]...)
+		cmd.Env = append(os.Environ(),
+			"IFACE="+m.config.VXLAN.Interface,
+		)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		go func() {
+			if err := cmd.Run(); err != nil {
+				log.WithError(err).Warn("Up hook failed")
+			}
+		}()
 	}
 
 	factory := informers.NewSharedInformerFactory(m.k8s, 0)
@@ -160,6 +208,8 @@ func (m *Manager) Stop() error {
 	log.Info("Stopping kubelan manager")
 
 	close(m.stop)
+
+	m.hookCancel()
 
 	if err := m.vxlan.Delete(); err != nil {
 		return fmt.Errorf("failed to delete VXLAN interface: %w", err)
