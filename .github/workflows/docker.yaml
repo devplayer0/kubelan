@@ -1,0 +1,30 @@
+name: Docker Image
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build_push:
+    runs-on: ubuntu-latest
+
+    env:
+      REPO: ghcr.io/devplayer0/kubelan
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Log into GHCR
+        run: |
+          echo "${{ secrets.CR_PAT }}" | \
+            docker login -u $GITHUB_ACTOR --password-stdin
+
+      - name: Pull current image
+        run: docker pull "$REPO:latest"
+
+      - name: Build image
+        run: docker build . --tag "$REPO:$GITHUB_SHA" --cache-from "$REPO:latest"
+
+      - name: Push image
+        run: docker push "$REPO:$GITHUB_SHA"
