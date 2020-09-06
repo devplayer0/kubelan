@@ -25,7 +25,7 @@ jobs:
         run: docker pull "$REPO:latest"
 
       - name: Build image
-        run: docker build . --tag "$REPO:$GITHUB_SHA" --cache-from "$REPO:latest"
+        run: docker build . --tag "$REPO:$GITHUB_SHA" --tag "$REPO:latest" --cache-from "$REPO:latest"
 
       - name: Push image
-        run: docker push "$REPO:$GITHUB_SHA"
+        run: docker push "$REPO"
