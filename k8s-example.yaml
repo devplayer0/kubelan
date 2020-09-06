@@ -1,0 +1,96 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kubelan
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kubelan
+rules:
+  - apiGroups: [discovery.k8s.io]
+    resources: [endpointslices]
+    verbs: [watch, list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kubelan
+roleRef:
+  kind: ClusterRole
+  name: kubelan
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - kind: ServiceAccount
+    name: kubelan
+    namespace: default
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubelan
+data:
+  kubelan.yaml: |
+    log_level: DEBUG
+    services:
+      - default/kubelan
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubelan
+  labels:
+    app: kubelan
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: kubelan
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: kubelan
+    spec:
+      serviceAccountName: kubelan
+      containers:
+        - name: nginx
+          image: nginx:alpine
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+        - name: kubelan
+          image: ghcr.io/devplayer0/kubelan:latest
+          env:
+            - name: KL_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          securityContext:
+            capabilities:
+              add: [NET_ADMIN]
+          volumeMounts:
+            - name: kubelan
+              mountPath: /run/config
+      volumes:
+        - name: kubelan
+          configMap:
+            name: kubelan
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: kubelan
+  name: kubelan
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: http
+  selector:
+    app: kubelan
+  type: ClusterIP
