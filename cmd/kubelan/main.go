@@ -19,6 +19,7 @@ var manager *kubelan.Manager
 func init() {
 	// Config defaults
 	viper.SetDefault("log_level", log.InfoLevel)
+	viper.SetDefault("http_address", ":8181")
 	viper.SetDefault("ip", "")
 	viper.SetDefault("namespace", "")
 	viper.SetDefault("services", []string{})

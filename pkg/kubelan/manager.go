@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"strings"
@@ -26,9 +27,12 @@ type Manager struct {
 	k8s    *kubernetes.Clientset
 	config Config
 
-	services map[string]struct{}
-	stop     chan struct{}
-	vxlan    *VXLAN
+	http *http.Server
+
+	services  map[string]struct{}
+	watchStop chan struct{}
+	vxlan     *VXLAN
+	started   bool
 
 	hookCtx    context.Context
 	hookCancel context.CancelFunc
@@ -123,11 +127,29 @@ func (m *Manager) changed(deleted bool, eps *v1beta1.EndpointSlice) {
 	}
 }
 
+func (m *Manager) httpHealth(w http.ResponseWriter, r *http.Request) {
+	if !m.started {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+func (m *Manager) httpConfig(w http.ResponseWriter, r *http.Request) {
+	JSONResponse(w, m.config, http.StatusOK)
+}
+
 // NewManager creates a new manager
 func NewManager(k8sConf *rest.Config, config Config) (*Manager, error) {
 	k8s, err := kubernetes.NewForConfig(k8sConf)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kubernetes client")
+	}
+
+	mux := http.NewServeMux()
+	h := &http.Server{
+		Addr:    config.HTTPAddress,
+		Handler: mux,
 	}
 
 	services := make(map[string]struct{})
@@ -145,21 +167,36 @@ func NewManager(k8sConf *rest.Config, config Config) (*Manager, error) {
 	}
 
 	hookCtx, hookCancel := context.WithCancel(context.Background())
-	return &Manager{
-		k8s,
-		config,
 
-		services,
-		make(chan struct{}),
-		nil,
-		hookCtx,
-		hookCancel,
-	}, nil
+	m := &Manager{
+		k8s:    k8s,
+		config: config,
+
+		http: h,
+
+		services:  services,
+		watchStop: make(chan struct{}),
+		vxlan:     nil,
+		started:   false,
+
+		hookCtx:    hookCtx,
+		hookCancel: hookCancel,
+	}
+
+	mux.HandleFunc("/health", m.httpHealth)
+	mux.HandleFunc("/config", m.httpConfig)
+	return m, nil
 }
 
 // Start starts watching services
 func (m *Manager) Start() error {
 	log.Info("Starting kubelan manager")
+
+	go func() {
+		if err := m.http.ListenAndServe(); err != nil {
+			log.WithError(err).Error("Failed to start HTTP server")
+		}
+	}()
 
 	var err error
 	m.vxlan, err = NewVXLAN(m.config.VXLAN.Interface, m.config.VXLAN.MTU, m.config.VXLAN.VNI, m.config.IP, m.config.VXLAN.Port)
@@ -199,7 +236,9 @@ func (m *Manager) Start() error {
 		},
 	})
 
-	factory.Start(m.stop)
+	factory.Start(m.watchStop)
+
+	m.started = true
 	return nil
 }
 
@@ -207,12 +246,16 @@ func (m *Manager) Start() error {
 func (m *Manager) Stop() error {
 	log.Info("Stopping kubelan manager")
 
-	close(m.stop)
+	close(m.watchStop)
 
 	m.hookCancel()
 
 	if err := m.vxlan.Delete(); err != nil {
 		return fmt.Errorf("failed to delete VXLAN interface: %w", err)
+	}
+
+	if err := m.http.Close(); err != nil {
+		return fmt.Errorf("failed to stop HTTP server: %w", err)
 	}
 
 	return nil

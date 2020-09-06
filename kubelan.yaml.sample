@@ -1,5 +1,6 @@
 log_level: DEBUG
 ip: 1.2.3.4
+http_address: ':8181'
 namespace: default
 services:
   - kube-system/some-svc

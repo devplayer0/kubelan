@@ -101,7 +101,8 @@ func ConfigDecoderOptions(config *mapstructure.DecoderConfig) {
 
 // Config defines the kubelan Manager's config
 type Config struct {
-	LogLevel log.Level `mapstructure:"log_level"`
+	LogLevel    log.Level `mapstructure:"log_level"`
+	HTTPAddress string    `mapstructure:"http_address"`
 
 	IP        net.IP
 	Namespace string
