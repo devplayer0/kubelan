@@ -1,0 +1,23 @@
+DOCKER_REPO = ghcr.io/devplayer0/kubelan
+DOCKER_TAG = latest
+
+.PHONY: all clean
+
+default: docker
+
+docker:
+	docker build -t $(DOCKER_REPO):$(DOCKER_TAG) .
+
+push: docker
+	docker push $(DOCKER_REPO):$(DOCKER_TAG)
+
+tools:
+	@cat tools.go | grep _ | awk -F'"' '{print $$2}' | xargs -tI % go install %
+
+dev: tools
+	go mod download
+	CompileDaemon -exclude-dir=.git -build="go build -o bin/kubelan ./cmd/kubelan" \
+		-command="bin/kubelan" -graceful-kill
+
+clean:
+	-rm -f bin/*
