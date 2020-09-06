@@ -5,12 +5,16 @@ import (
 	"fmt"
 	"net"
 	"reflect"
+	"regexp"
 
 	"github.com/mitchellh/mapstructure"
 	log "github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
 	"golang.org/x/sys/unix"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+var objectMetaRegex = regexp.MustCompile(`^(\S+)/(\S+)$`)
 
 // stringToLogLevelHookFunc returns a mapstructure.DecodeHookFunc which parses a logrus Level from a string
 func stringToLogLevelHookFunc() mapstructure.DecodeHookFunc {
@@ -63,6 +67,26 @@ func stringOrDefaultToIPHookFunc() mapstructure.DecodeHookFunc {
 	}
 }
 
+// stringToObjectMetaHookFunc returns a mapstructure.DecodeHookFunc which parses
+// a string of form `<namespace>/<name>` into a Kubernetes ObjectMeta
+func stringToObjectMetaHookFunc() mapstructure.DecodeHookFunc {
+	return func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
+		if f.Kind() != reflect.String || t != reflect.TypeOf(v1.ObjectMeta{}) {
+			return data, nil
+		}
+
+		match := objectMetaRegex.FindStringSubmatch(data.(string))
+		if len(match) == 0 {
+			return nil, errors.New(`Invalid service "namespace/name"`)
+		}
+
+		return v1.ObjectMeta{
+			Namespace: match[1],
+			Name:      match[2],
+		}, nil
+	}
+}
+
 // ConfigDecoderOptions enables necessary mapstructure decode hook functions
 func ConfigDecoderOptions(config *mapstructure.DecoderConfig) {
 	config.ErrorUnused = true
@@ -70,6 +94,7 @@ func ConfigDecoderOptions(config *mapstructure.DecoderConfig) {
 		stringOrDefaultToIPHookFunc(),
 		config.DecodeHook,
 		stringToLogLevelHookFunc(),
+		stringToObjectMetaHookFunc(),
 	)
 }
 
@@ -78,7 +103,7 @@ type Config struct {
 	LogLevel log.Level `mapstructure:"log_level"`
 
 	IP        net.IP
-	Services  []string
+	Services  []v1.ObjectMeta
 	Interface string
 	VID       uint32
 }

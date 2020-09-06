@@ -19,7 +19,7 @@ tools:
 
 dev: tools
 	CompileDaemon -exclude-dir=.git -build="go build -o bin/kubelan ./cmd/kubelan" \
-		-command="bin/kubelan -loglevel trace" -graceful-kill
+		-command="bin/kubelan" -graceful-kill
 
 clean:
 	-rm -f bin/*
