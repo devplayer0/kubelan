@@ -76,11 +76,14 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+          ports:
+            - name: http
+              containerPort: 8181
+              protocol: TCP
           livenessProbe:
             httpGet:
               path: /health
-              port: 8181
-            periodSeconds: 5
+              port: http
           securityContext:
             capabilities:
               add: [NET_ADMIN]
