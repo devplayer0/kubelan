@@ -36,21 +36,32 @@ data:
     services:
       - kubelan
     hooks:
-      up: ['sh', '-c', 'echo "Hello from up hook!" && ip link show dev $IFACE && exit 1']
-      change: ['sh', '-c', 'echo "Hello from change hook!" && echo "iface: $IFACE, service: $SERVICE, ips: $IPS", deleted: $DELETED']
+      up:
+        - sh
+        - '-c'
+        - |
+          k8s_replica() {
+            r="$(echo $1 | sed -r '/^.+-[0-9]+/!{q1}; {s|^.+-([0-9]+)|\1|}')"
+            ([ $? -eq 0 ] && echo "$r") || echo 0
+          }
+
+          replica="$(k8s_replica "$HOSTNAME")"
+          ip="192.168.69.$(($replica + 1))/24"
+
+          ip addr add "$ip" dev "$IFACE"
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: kubelan
   labels:
     app: kubelan
 spec:
+  serviceName: kubelan
   replicas: 3
   selector:
     matchLabels:
       app: kubelan
-  strategy: {}
   template:
     metadata:
       labels:
@@ -58,12 +69,9 @@ spec:
     spec:
       serviceAccountName: kubelan
       containers:
-        - name: nginx
-          image: nginx:alpine
-          ports:
-            - name: http
-              containerPort: 80
-              protocol: TCP
+        - name: alpine
+          image: alpine:3.12
+          command: [sleep, infinity]
         - name: kubelan
           image: ghcr.io/devplayer0/kubelan:latest
           imagePullPolicy: Always
@@ -102,11 +110,7 @@ metadata:
     app: kubelan
   name: kubelan
 spec:
-  ports:
-  - name: http
-    port: 80
-    protocol: TCP
-    targetPort: http
   selector:
     app: kubelan
   type: ClusterIP
+  clusterIP: None
