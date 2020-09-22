@@ -19,7 +19,7 @@ vxlan:
   # unique across the cluster
   vni: 1337
   # UDP port for VXLAN traffic. Setting to something other than 4789 might
-  # resolve issues on certain CNI's (Cilium in particular seemd to have issues
+  # resolve issues on certain CNI's (Cilium in particular seemed to have issues
   # with this port)
   port: 4789
   # MTU for VXLAN interface, leave unset to auto-detect (MTU of main pod
