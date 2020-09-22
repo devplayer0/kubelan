@@ -1,0 +1,40 @@
+log_level: DEBUG
+# Listen address for health check / config retrieval server
+http_address: ':8181'
+
+# IP address of the pod (should never be set manually!)
+ip: '1.2.3.4'
+# Application namespace, also shouldn't be set manually
+namespace: default
+# Services to network on the kubelan, `namespace/service` (or `service` to use
+# the same namespace as the application)
+services:
+  - kube-system/some-svc
+  - some-default-ns-svc
+
+vxlan:
+  # Name of kubelan interface in container
+  interface: my-lan
+  # VXLAN VNI (VXLAN Network Identifier, analagous to VLAN tag), should be
+  # unique across the cluster
+  vni: 1337
+  # UDP port for VXLAN traffic. Setting to something other than 4789 might
+  # resolve issues on certain CNI's (Cilium in particular seemd to have issues
+  # with this port)
+  port: 4789
+  # MTU for VXLAN interface, leave unset to auto-detect (MTU of main pod
+  # interface - 50 for VXLAN overhead)
+  mtu: 1450
+
+hooks:
+  # Executed in the kubelan container once the interface has been created
+  # (before peers have been added). Exposes the interface name as an environment
+  # variable `$IFACE`.
+  up: ['sh', '-c', 'echo "Hello from up hook!" && ip link show dev $IFACE']
+  # Executed when peers are added / removed. Exposes the following as
+  # environment variables:
+  #  - $IFACE: VXLAN interface name
+  #  - $IPS: Space-delimited list of pod IP's that were added / removed
+  #  - $SERVICE: Service which the pods are attached to
+  #  - $DELETED: true if the IP's were removed, false otherwise
+  change: ['sh', '-c', 'echo "Hello from change hook!" && echo "iface: $IFACE, service: $SERVICE, ips: $IPS", deleted: $DELETED']
