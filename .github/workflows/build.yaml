@@ -10,10 +10,14 @@ jobs:
     runs-on: ubuntu-20.04
 
     env:
+      PLATFORMS: linux/amd64,linux/386,linux/arm64,linux/arm/v7
       REPO: ghcr.io/devplayer0/kubelan
 
     steps:
       - uses: actions/checkout@v2
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
@@ -34,6 +38,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v2
         with:
+          platforms: ${{ env.PLATFORMS }}
           tags: ${{ env.REPO }}:${{ steps.vars.outputs.tag }},${{ env.REPO }}:latest
           push: true
           cache-from: type=registry,src=${{ env.REPO }}:latest
