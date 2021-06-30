@@ -1,4 +1,4 @@
-FROM golang:1.15-alpine AS builder
+FROM golang:1.16-alpine3.14 AS builder
 RUN apk --no-cache add gcc musl-dev
 
 WORKDIR /usr/local/kubelan
@@ -10,16 +10,16 @@ COPY pkg/ ./pkg/
 RUN mkdir bin/ && go build -o bin/ ./cmd/...
 
 
-FROM alpine:3.12
+FROM alpine:3.14
 
 RUN apk --no-cache add iproute2
 
 COPY --from=builder /usr/local/kubelan/bin/* /usr/local/bin/
 
-ENV KL_LOG_LEVEL=
-ENV KL_IP=
-ENV KL_SERVICES=
-ENV KL_VXLAN_INTERFACE=
-ENV KL_VXLAN_VNI=
-ENV KL_VXLAN_PORT=
+ENV KL_LOG_LEVEL= \
+    KL_IP= \
+    KL_SERVICES= \
+    KL_VXLAN_INTERFACE= \
+    KL_VXLAN_VNI= \
+    KL_VXLAN_PORT=
 ENTRYPOINT ["/usr/local/bin/kubelan"]

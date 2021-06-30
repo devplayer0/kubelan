@@ -70,7 +70,7 @@ spec:
       serviceAccountName: kubelan
       containers:
         - name: alpine
-          image: alpine:3.12
+          image: alpine:3.14
           command: [sleep, infinity]
         - name: kubelan
           image: ghcr.io/devplayer0/kubelan:latest
