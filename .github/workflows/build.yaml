@@ -10,7 +10,6 @@ jobs:
     runs-on: ubuntu-20.04
 
     env:
-      CR_PAT_USER: devplayer0
       REPO: ghcr.io/devplayer0/kubelan
 
     steps:
@@ -33,8 +32,8 @@ jobs:
         uses: docker/login-action@v1
         with:
           registry: ghcr.io
-          username: ${{ env.CR_PAT_USER }}
-          password: ${{ secrets.CI_PAT }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build
         uses: docker/build-push-action@v2
